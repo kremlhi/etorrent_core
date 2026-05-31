@@ -15,7 +15,7 @@
 %% Callbacks
 -export([start/2, stop/1, prep_stop/1, profile_output/0]).
 
--define(RANDOM_MAX_SIZE, 999999999999).
+-define(RANDOM_MAX_BYTES, 5).
 -define(APP, etorrent_core).
 
 start() ->
@@ -88,7 +88,7 @@ stop(_State) ->
 %% @doc Generate a random peer id for use
 %% @end
 generate_peer_id() ->
-    Number = crypto:strong_rand_range(?RANDOM_MAX_SIZE),
+    Number = binary:decode_unsigned(crypto:strong_rand_bytes(?RANDOM_MAX_BYTES)),
     Rand = io_lib:fwrite("~B----------", [Number]),
     PeerId = lists:flatten(io_lib:format("-ET~s-~12s", [?VERSION, Rand])),
     list_to_binary(PeerId).
