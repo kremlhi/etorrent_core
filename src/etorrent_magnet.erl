@@ -27,7 +27,7 @@
 -define(DEFAULT_RECEIVE_TIMEOUT, 5000).
 -define(DEFAULT_AWAIT_TIMEOUT, 25000).
 
--define(URL_PARSER, mochiweb_util).
+%% mochiweb_util removed; use OTP uri_string (OTP 21+) instead.
 
 %% The extension message IDs are the IDs used to send the extension messages
 %% to the peer sending this handshake.
@@ -47,11 +47,11 @@
     DN :: string() | undefined,
     TR :: string().
 parse_url(Url) ->
-    {Scheme, _Netloc, _Path, Query, _Fragment} = ?URL_PARSER:urlsplit(Url),
+    #{scheme := Scheme, query := Query} = uri_string:parse(Url),
     case Scheme of
         "magnet" ->
-            %% Get a parameter proplist. Keys and values are strings.
-            Params = ?URL_PARSER:parse_qs(Query),
+            %% uri_string:dissect_query returns [{Key, Value}] string pairs.
+            Params = uri_string:dissect_query(Query),
             analyse_params(Params, undefined, undefined, []);
         _ ->
             error({unknown_scheme, Scheme, Url})
@@ -66,14 +66,16 @@ build_url(XT, DN, TRs) when is_integer(XT), is_list(TRs) ->
 
 encode_description(undefined) -> <<>>;
 encode_description(DN) when is_binary(DN) ->
-    QDN = iolist_to_binary(mochiweb_util:quote_plus(DN)),
+    %% uri_string:quote/1 uses %20 for spaces; quote_plus used +, but %20 is
+    %% equally valid in magnet URIs and better supported by modern clients.
+    QDN = iolist_to_binary(uri_string:quote(DN)),
     <<"&dn=", QDN/binary>>.
 
 encode_trackers(TRs) ->
     << <<(encode_tracker(TR))/binary>> || TR <- TRs>>.
 
 encode_tracker(TR) ->
-    QTR = iolist_to_binary(mochiweb_util:quote_plus(TR)),
+    QTR = iolist_to_binary(uri_string:quote(TR)),
     <<"&tr=", QTR/binary>>.
 
 
