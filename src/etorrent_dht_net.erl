@@ -75,8 +75,8 @@
 
 -record(state, {
     socket :: inet:socket(),
-    sent   :: gb_tree(),
-    tokens :: queue()
+    sent   :: gb_trees:tree(),
+    tokens :: queue:queue()
 }).
 
 %
@@ -569,7 +569,7 @@ handle_query('announce', Params, IP, Port, MsgID, Self, Tokens) ->
     return(IP, Port, MsgID, common_values(Self)).
 
 unique_message_id(IP, Port, Open) ->
-    IntID = random:uniform(16#FFFF),
+    IntID = rand:uniform(16#FFFF),
     MsgID = <<IntID:16>>,
     IsLocal  = gb_trees:is_defined(tkey(IP, Port, MsgID), Open),
     if IsLocal -> unique_message_id(IP, Port, Open);
@@ -604,8 +604,8 @@ get_string(What, PL) ->
 % requests, or at least announce requests from nodes that never sends get_peers requests.
 %
 random_token() ->
-    ID0 = random:uniform(16#FFFF),
-    ID1 = random:uniform(16#FFFF),
+    ID0 = rand:uniform(16#FFFF),
+    ID1 = rand:uniform(16#FFFF),
     <<ID0:16, ID1:16>>.
 
 %

@@ -10,7 +10,6 @@ peer_id(mu_torrent, '3.0') ->
 
 %% @doc Encode client version of length 6.
 id6(Id) ->
-    %% Get a random number from 0 to 999999999999 (12 nines).
-    Rand = crypto:rand_uniform(0, 1000000000000),
+    Rand = binary:decode_unsigned(crypto:strong_rand_bytes(5)) rem 1000000000000,
     iolist_to_binary(io_lib:format("-~s-~-12..-B", [Id, Rand])).
 

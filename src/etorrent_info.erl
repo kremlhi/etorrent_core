@@ -71,7 +71,7 @@
     torrent_name :: binary(),
     tracker_tiers :: [[binary()]],
     torrent :: torrent_id(),
-    static_file_info :: array(),
+    static_file_info :: array:array(),
     directories :: [file_id()], %% usorted
     total_size :: non_neg_integer(),
     piece_size :: non_neg_integer(),
@@ -1032,12 +1032,16 @@ add_directories_test_() ->
 
 
 el(List, Pos) ->
-    Children  = [element(Pos, X) || X <- List].
+    [element(Pos, X) || X <- List].
+
+%% Return only direct top-level entries (no '/' in name).
+simple_minimize_reclist(Elems) ->
+    [E || E <- Elems, not lists:member($/, E#file_info.name)].
 
 
 
 add_directories_test() ->
-    [Root|_] = X=
+    [Root|_] =
     add_directories(
         [#file_info{position=0, size=3, name=
     "BBC.7.BigToe/Eoin Colfer. Artemis Fowl/artemis_04.mp3"}
@@ -1053,8 +1057,8 @@ add_directories_test() ->
 
 
 metadata_pieces_test_() ->
-    crypto:start(),
-    TorrentBin = crypto:rand_bytes(100000),
+    application:start(crypto),
+    TorrentBin = crypto:strong_rand_bytes(100000),
     Pieces = metadata_pieces(TorrentBin, 0, byte_size(TorrentBin)),
     [Last|InitR] = lists:reverse(Pieces),
     F = fun(Piece) -> byte_size(Piece) =:= ?METADATA_BLOCK_BYTE_SIZE end,

@@ -23,7 +23,7 @@
 
    %% Enable UPnP subsystem, which tries to open port mappings in
    %% UPnP-aware routers for etorrent.
-   {use_upnp, true },
+   {use_upnp, false },
 
    %% The directory to watch for .torrent files and the directory to download data into
    {dir, "/home/user/etorrent/torrent_data"},

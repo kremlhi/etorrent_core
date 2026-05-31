@@ -64,7 +64,7 @@ gsplit(N, [H|T], Rest) ->
 %%   and thus the function is quite ineffective. We can build a much
 %%   much faster version if we create our own queues.
 %% @end
--spec queue_remove(term(), queue()) -> queue().
+-spec queue_remove(term(), queue:queue()) -> queue:queue().
 queue_remove(Item, Q) ->
     QList = queue:to_list(Q),
     List = lists:delete(Item, QList),
@@ -75,7 +75,7 @@ queue_remove(Item, Q) ->
 %% @end
 -spec list_shuffle([A]) -> [A].
 list_shuffle(List) ->
-    Randomized = lists:keysort(1, [{random:uniform(), Item} || Item <- List]),
+    Randomized = lists:keysort(1, [{rand:uniform(), Item} || Item <- List]),
     [Value || {_, Value} <- Randomized].
 
 %% @doc A Date formatter for {{Y, Mo, D}, {H, Mi, S}}.
@@ -393,7 +393,7 @@ prop_group_count() ->
 shuffle_list(List) ->
     init_random_generator(),
     {NewList, _} = lists:foldl( fun(_El, {Acc,Rest}) ->
-        RandomEl = lists:nth(random:uniform(length(Rest)), Rest),
+        RandomEl = lists:nth(rand:uniform(length(Rest)), Rest),
         {[RandomEl|Acc], lists:delete(RandomEl, Rest)}
     end, {[],List}, List),
     NewList.
@@ -447,7 +447,8 @@ format_address(Addr) ->
 
 
 init_random_generator() ->
-    crypto2:init_random_generator().
+    crypto:rand_seed(),
+    ok.
 
 sha(Data) ->
-    crypto2:sha(Data).
+    crypto:hash(sha, Data).
