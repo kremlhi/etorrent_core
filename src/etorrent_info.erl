@@ -1502,12 +1502,12 @@ byte_ranges_to_mask([{From, Size}|Ranges], FromPiece, PLen, TLen, IsGreedy, Bin)
     assert_positive(PBefore),
     assert_positive(PIn),
     FromPiece2 = PFrom + PIn,
-    Bin2 = <<Bin/binary, 0:PBefore, -1:PIn>>,
+    Bin2 = <<Bin/bitstring, 0:PBefore, -1:PIn>>,
     byte_ranges_to_mask(Ranges, FromPiece2, PLen, TLen, IsGreedy, Bin2);
 byte_ranges_to_mask([], FromPiece, PLen, TLen, _IsGreedy, Bin) ->
     PTotal = byte_to_piece_count(TLen, PLen),
     PAfter = PTotal - FromPiece,
-    <<Bin/binary, 0:PAfter>>.
+    <<Bin/bitstring, 0:PAfter>>.
 
 
 -ifdef(TEST).
