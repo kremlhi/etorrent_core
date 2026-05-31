@@ -35,9 +35,10 @@ request(URL) when is_binary(URL) ->
     handle_response(hackney:request(get, URL, Headers, <<>>, Options)).
 
 handle_response({ok, Status, RespHeaders, Client}) ->
+    %% hackney 1.x returns {ok, Body} from hackney:body/1 (no client in tuple).
     case hackney:body(Client) of
-        {ok, RespBody, EatenClient} ->
-            hackney:close(EatenClient),
+        {ok, RespBody} ->
+            hackney:close(Client),
             {ok,
              Status,
              RespHeaders,

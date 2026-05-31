@@ -94,10 +94,14 @@ parse_host_port(Scheme, HostPort) ->
     {Host, int_port(Port)}.
 
 split_uri(UriPart, SplitChar, NoMatchResult, SkipLeft, SkipRight) ->
-    case inets_regexp:first_match(UriPart, SplitChar) of
-        {match, Match, _} ->
+    %% inets_regexp was removed from OTP; use re:run instead.
+    %% re:run returns 0-based positions; the original code assumed 1-based,
+    %% so we add 1 to convert.
+    case re:run(UriPart, SplitChar) of
+        {match, [{Start, _Len} | _]} ->
+            Match = Start + 1,
             {string:substr(UriPart, 1, Match - SkipLeft),
-	     string:substr(UriPart, Match + SkipRight, length(UriPart))};
+             string:substr(UriPart, Match + SkipRight, length(UriPart))};
         nomatch ->
             NoMatchResult
     end.
