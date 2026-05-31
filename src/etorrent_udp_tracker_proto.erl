@@ -61,7 +61,7 @@ start_link() ->
 %% @doc Generate a new unique transaction id
 %% @end
 new_transaction_id() ->
-    crypto:rand_bytes(4).
+    crypto:strong_rand_bytes(4).
 
 %% Only allows encoding of the packet types we send to the server
 %% @doc Encode a packet in term format to wire format

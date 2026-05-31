@@ -84,7 +84,7 @@ stop(_State) ->
 %% @doc Generate a random peer id for use
 %% @end
 generate_peer_id() ->
-    Number = crypto:rand_uniform(0, ?RANDOM_MAX_SIZE),
+    Number = crypto:strong_rand_range(?RANDOM_MAX_SIZE),
     Rand = io_lib:fwrite("~B----------", [Number]),
     PeerId = lists:flatten(io_lib:format("-ET~s-~12s", [?VERSION, Rand])),
     list_to_binary(PeerId).

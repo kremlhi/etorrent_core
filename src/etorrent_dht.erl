@@ -30,7 +30,7 @@ list_id(ID) when is_integer(ID) ->
 
 -spec random_id() -> nodeid().
 random_id() ->
-    Byte  = fun() -> random:uniform(256) - 1 end,
+    Byte  = fun() -> rand:uniform(256) - 1 end,
     Bytes = [Byte() || _ <- lists:seq(1, 20)],
     integer_id(Bytes).
 

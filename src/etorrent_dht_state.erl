@@ -327,7 +327,7 @@ unreachable_tab() ->
 
 random_node_tag() ->
     etorrent_utils:init_random_generator(),
-    random:uniform(max_unreachable()).
+    rand:uniform(max_unreachable()).
 
 %% @private
 init([StateFile, BootstapNodes]) ->

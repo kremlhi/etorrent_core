@@ -124,7 +124,7 @@ calc_max_upload_slots() ->
 %% a view on a peer, which tells us the given current state and the given
 %% current rate of that peer. I wonder if it really belongs in
 %% etorrent_peer_states, and not here.
--spec lookup_info(set(), integer(), pid()) -> none | {seeding, float()}
+-spec lookup_info(sets:set(), integer(), pid()) -> none | {seeding, float()}
                                                    | {leeching, float()}.
 lookup_info(Seeding, Id, Pid) ->
     case sets:is_element(Id, Seeding) of
@@ -148,7 +148,7 @@ build_rechoke_info(Peers) ->
 %% Gather information about each Peer so we can choose which peers to
 %%  bet on for great download/upload speeds. Produces a #rechoke_info{}
 %%  list out of peers containing all information necessary for the choice.
--spec build_rechoke_info(set(), [pid()]) -> [#rechoke_info{}].
+-spec build_rechoke_info(sets:set(), [pid()]) -> [#rechoke_info{}].
 build_rechoke_info(_Seeding, []) -> [];
 build_rechoke_info(Seeding, [Pid | Next]) ->
     case etorrent_table:get_peer_info(Pid) of
@@ -208,7 +208,7 @@ move_cyclic_chain(Chain) ->
 insert_new_peer_into_chain(Pid, []) ->
     [Pid];
 insert_new_peer_into_chain(Pid, [_|_] = Chain) ->
-    Index = crypto:rand_uniform(0, length(Chain) + 1),
+    Index = crypto:strong_rand_range(length(Chain) + 1),
     {Front, Back} = lists:split(Index, Chain),
     Front ++ [Pid | Back].
 

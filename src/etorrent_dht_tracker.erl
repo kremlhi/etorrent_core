@@ -146,7 +146,7 @@ poller_key() ->
 
 random_peer() ->
     etorrent_utils:init_random_generator(),
-    random:uniform(max_per_torrent()).
+    rand:uniform(max_per_torrent()).
 
 init(Args) ->
     InfoHash  = proplists:get_value(infohash, Args),
@@ -157,8 +157,8 @@ init(Args) ->
     register_server(TorrentID),
     %% Fetch a node-list for 30 seconds and announce for 10 seconds after it.
     %% It will decrease load during starting.
-    T1 = random:uniform(30000),
-    T2 = random:uniform(10000),
+    T1 = rand:uniform(30000),
+    T2 = rand:uniform(10000),
     erlang:send_after(T1, self(), init_nodes),
     erlang:send_after(T1+T2, self(), {timeout, undefined, announce}),
     InitState = #state{
