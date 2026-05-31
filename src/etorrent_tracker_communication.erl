@@ -48,7 +48,7 @@
 -export([ifaddrs/0]).
 
 -ifdef(TEST).
--export([first_tracker_id/1]).
+-export([first_tracker_id/1, identify_url_type/1]).
 -endif.
 
 -type tier() :: [{integer(), binary()}].
@@ -234,7 +234,8 @@ identify_url_type(Url) ->
 	case etorrent_http_uri:parse(Url) of
 	  {S1, _UserInfo, Host, Port, _Path, _Query} ->
 	  	case S1 of
-	 	  http -> http;
+	 	  http  -> http;
+	 	  https -> http;
 		  udp ->
 			{ok, IP} = inet:getaddr(Host, inet),
  			{udp, IP, Port}
