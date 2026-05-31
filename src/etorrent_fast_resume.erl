@@ -114,6 +114,10 @@ init([]) ->
             {error,{not_a_dets_file, _}} ->
                 etorrent_event:notify(statefile_is_not_dets),
                 file:delete(Statefile),
+                dets:open_file(Statefile, []);
+            %% Parent directory doesn't exist yet — create it and retry.
+            {error, {file_error, _, enoent}} ->
+                ok = filelib:ensure_dir(Statefile),
                 dets:open_file(Statefile, [])
         end,
     InitState  = #state{table=Statetable},

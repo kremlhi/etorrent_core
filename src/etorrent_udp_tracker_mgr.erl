@@ -65,7 +65,7 @@ announce(Tr, PL) ->
 %% @end
 %% @todo Describe the announce data
 -spec announce(TrackerAddr, [{atom(), term()}], timeout()) ->
-    {ok, Peers, Status} when
+    {ok, Peers, Status} | timeout | {error, term()} when
     TrackerAddr :: {ipaddr(), portnum()},
     Peers :: [{ipaddr(), portnum()}],
     Status :: [{StatusKey, non_neg_integer()}],
@@ -136,8 +136,14 @@ init([]) ->
     ets:new(?TAB, [named_table, public, {keypos, 1}, bag]),
     Port = etorrent_config:udp_port(),
     Ip = etorrent_config:listen_ip(),
+    %% Use inet6 only when not binding to a specific IPv4 address.
+    %% Mixing inet+inet6 with an IPv4 {ip,_} causes eaddrinuse on macOS.
+    InetOpts = case Ip of
+        all -> [inet6];
+        _   -> [inet]
+    end,
     Options = case Ip of all -> []; _ -> [{ip, Ip}] end
-            ++ [binary, {active, true}, inet, inet6],
+            ++ [binary, {active, true}] ++ InetOpts,
     {ok, Socket} = gen_udp:open(Port, Options),
     {ok, #state{ socket = Socket }}.
 

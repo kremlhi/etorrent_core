@@ -318,9 +318,15 @@ contact_tracker_udp(Url, _TrackerID, TrackerIP, TrackerPort, Event,
            Timeout) of
         {ok, Peers, Status} ->
             lager:debug("UDP reply handled"),
-            {Interval, MinInterval} = 
+            {Interval, MinInterval} =
                 handle_udp_response(Url, Id, Peers, Status),
-            {ok, handle_timeout(Interval, MinInterval, S)}
+            {ok, handle_timeout(Interval, MinInterval, S)};
+        timeout ->
+            lager:warning("UDP tracker ~p:~p timed out", [TrackerIP, TrackerPort]),
+            {ok, S};
+        {error, Reason} ->
+            lager:warning("UDP tracker ~p:~p error: ~p", [TrackerIP, TrackerPort, Reason]),
+            {ok, S}
     end.
 
 %% @todo: consider not passing around the state here!
