@@ -1,9 +1,14 @@
 -module(etorrent_rlimit).
-%% This module wraps the rlimit application and exports functions that
-%% are expected to be called from etorrent_peer_send and etorrent_peer_recv.
+%% No-op rate-limiter stub.
 %%
-%% etorrent_peer_send is expected to aquire a slot after a message is sent.
-%% etorrent_peer_recv is expected to aquire a slot after receiving a message.
+%% The original implementation delegated to the abandoned `rlimit` application
+%% (arcusfelis/rlimit).  Until a replacement token-bucket limiter is written,
+%% every slot is granted immediately: send/1 and recv/1 fire {rlimit, continue}
+%% back to the caller with no delay, preserving the existing callback contract
+%% in etorrent_peer_send and etorrent_peer_recv without requiring callers to
+%% change.
+%%
+%% Rate queries return 0 and rate setters are no-ops.
 -export([init/0,
          send/1,
          recv/1,
@@ -14,66 +19,37 @@
          max_send_rate/1,
          max_recv_rate/1]).
 
-%% flow name definitions
--define(DOWNLOAD, etorrent_download_rlimit).
--define(UPLOAD, etorrent_upload_rlimit).
+-spec init() -> ok.
+init() -> ok.
 
+%% @doc Grant a send slot immediately.
+%% Sends {rlimit, continue} to the calling process and returns self() as a
+%% stand-in for the limiter pid expected by etorrent_peer_send.
+-spec send(non_neg_integer()) -> pid().
+send(_Bytes) ->
+    self() ! {rlimit, continue},
+    self().
+
+%% @doc Grant a receive slot immediately.
+-spec recv(non_neg_integer()) -> pid().
+recv(_Bytes) ->
+    self() ! {rlimit, continue},
+    self().
 
 -spec send_rate() -> non_neg_integer().
-send_rate() ->
-    round(rlimit:prev_allowed(?UPLOAD)).
-
+send_rate() -> 0.
 
 -spec recv_rate() -> non_neg_integer().
-recv_rate() ->
-    round(rlimit:prev_allowed(?DOWNLOAD)).
-
-
--spec max_recv_rate() -> non_neg_integer().
-max_recv_rate() ->
-    round(rlimit:get_limit(?DOWNLOAD)).
-
--spec max_recv_rate(non_neg_integer()) -> ok.
-max_recv_rate(Value) ->
-    rlimit:set_limit(?DOWNLOAD, Value).
-
+recv_rate() -> 0.
 
 -spec max_send_rate() -> non_neg_integer().
-max_send_rate() ->
-    round(rlimit:get_limit(?UPLOAD)).
+max_send_rate() -> 0.
 
+-spec max_recv_rate() -> non_neg_integer().
+max_recv_rate() -> 0.
 
 -spec max_send_rate(non_neg_integer()) -> ok.
-max_send_rate(Value) ->
-    rlimit:set_limit(?UPLOAD, Value).
+max_send_rate(_Value) -> ok.
 
-
-%% @doc Initialize the download and upload flows.
-%% @end
--spec init() -> ok.
-init() ->
-    DLRate = etorrent_config:max_download_rate(),
-    ULRate = etorrent_config:max_upload_rate(),
-    ok = rlimit:new(?DOWNLOAD, to_byte_rate(DLRate), 1000),
-    ok = rlimit:new(?UPLOAD, to_byte_rate(ULRate), 1000).
-
-%% @doc Aquire a send slot.
-%% A continue message will be sent to the caller once a slot has been aquired.
-%% @end
--spec send(non_neg_integer()) -> pid().
-send(Bytes) ->
-    rlimit:atake(Bytes, {rlimit, continue}, ?UPLOAD).
-
-
-%% @doc Aquire a receive slot.
-%% A continue message will be sent to the caller once a slot has been aquired.
-%% @end
--spec recv(non_neg_integer()) -> pid().
-recv(Bytes) ->
-    rlimit:atake(Bytes, {rlimit, continue}, ?DOWNLOAD).
-
-%% @private Convert KB/s to B/s
-to_byte_rate(infinity) ->
-    infinity;
-to_byte_rate(KB) ->
-    1024 * KB.
+-spec max_recv_rate(non_neg_integer()) -> ok.
+max_recv_rate(_Value) -> ok.

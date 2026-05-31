@@ -8,10 +8,10 @@
         syntax_tools, compiler, lager,
         crypto, public_key, ssl,
         inets,
-        crypto2,
         gproc,
-        rlimit,
         hackney
+        %% cowboy/ranch added here once web UI is ported to cowboy 2.x
+        %% azdht/mdns/upnp omitted — optional, gated by config flags, not started by default
       ]},
     {registered, []}, % This is SO wrong
     {modules, []},
