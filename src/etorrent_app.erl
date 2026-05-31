@@ -24,10 +24,14 @@ start() ->
 start(Config) ->
     %% Delete duplicates, expand compacted config.
     Config1 = lists:ukeysort(1, proplists:unfold(Config)),
-    [application:set_env(?APP, Key, Val)
+    %% Load the .app file so application:get_key/2 works for dep enumeration.
+    %% If already loaded this is a benign no-op.
+    _ = application:load(?APP),
+    %% Set config values with persistent=true so application:load/1 cannot
+    %% overwrite them with .app.src defaults (OTP 28 clobbers non-persistent
+    %% env vars when loading the app resource file).
+    [application:set_env(?APP, Key, Val, [{persistent, true}])
      || {Key, Val} <- Config1],
-    % Load app file.
-    application:load(?APP),
     {ok, Deps} = application:get_key(?APP, applications),
     true = lists:all(fun ensure_started/1, Deps),
     application:start(?APP).
@@ -94,9 +98,12 @@ ensure_started(App) ->
     case application:start(App) of
         ok ->
             true;
-        {error, {already_started, App}} ->
+        {error, {already_started, _}} ->
             true;
+        {error, {not_started, Dep}} ->
+            %% Transitive dependency not started yet; start it first.
+            ensure_started(Dep) andalso ensure_started(App);
         Else ->
             error_logger:error_msg("Couldn't start ~p: ~p", [App, Else]),
-            Else
+            false
     end.

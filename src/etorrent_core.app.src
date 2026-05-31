@@ -26,8 +26,9 @@
            {udp_port, 3722},
 
            %% Wether or not to use Azureus/Vuze DHT and the regular DHT
-           {azdht, true},
-           {dht, true}, {dht_port, 3723},
+           %% Both default to false since azdht/dht are optional deps not always present
+           {azdht, false},
+           {dht, false}, {dht_port, 3723},
            
            %% Use the PEX (Peer exchange) extension or not?
            {pex, false},
