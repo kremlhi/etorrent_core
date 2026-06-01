@@ -26,7 +26,7 @@
 -spec request(binary()) -> {error, term()} | {ok, integer(), term(), iolist()}.
 request(URL) when is_binary(URL) ->
     Ip = etorrent_config:listen_ip(),
-    Options = [{pool, default}, {recv_timeout, 15000},
+    Options = [{pool, default}, {recv_timeout, 15000}, {with_body, true},
                {connect_options, case Ip of all -> []; _ -> [{ip, Ip}] end}],
     Headers = [{<<"User-Agent">>, binary_to_list(?AGENT_TRACKER_STRING)},
               {<<"Host">>, decode_host(URL)},
@@ -34,19 +34,9 @@ request(URL) when is_binary(URL) ->
               {<<"Accept-Encoding">>, "gzip, identity"}],
     handle_response(hackney:request(get, URL, Headers, <<>>, Options)).
 
-handle_response({ok, Status, RespHeaders, Client}) ->
-    %% hackney 1.x returns {ok, Body} from hackney:body/1 (no client in tuple).
-    case hackney:body(Client) of
-        {ok, RespBody} ->
-            hackney:close(Client),
-            {ok,
-             Status,
-             RespHeaders,
-             handle_response_body(content_encoding(RespHeaders), RespBody)};
-        {error, E} ->
-            hackney:close(Client),
-            {error, E}
-    end;
+handle_response({ok, Status, RespHeaders, Body}) ->
+    {ok, Status, RespHeaders,
+     handle_response_body(content_encoding(RespHeaders), Body)};
 handle_response({error, E}) ->
     {error, E}.
 
