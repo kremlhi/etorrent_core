@@ -573,7 +573,16 @@ handle_info(Msg, State) ->
     {noreply, State}.
 
 %% @private
-terminate(_, _) ->
+terminate(Reason, State) ->
+    case Reason of
+        normal        -> ok;
+        shutdown      -> ok;
+        {shutdown, _} -> ok;
+        _ ->
+            catch ets:insert(torrent_crash_log,
+                {info, State#state.torrent, Reason,
+                 erlang:system_time(millisecond)})
+    end,
     ok.
 
 %% @private

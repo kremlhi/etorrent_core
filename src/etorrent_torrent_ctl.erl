@@ -846,7 +846,16 @@ handle_info({piece, {stored, Index}}, paused, State) ->
 
 
 %% @private
-terminate(_Reason, _StateName, _S) ->
+terminate(Reason, StateName, S) ->
+    case Reason of
+        normal        -> ok;
+        shutdown      -> ok;
+        {shutdown, _} -> ok;
+        _ ->
+            catch ets:insert(torrent_crash_log,
+                {torrent_ctl, S#state.id, StateName, Reason,
+                 erlang:system_time(millisecond)})
+    end,
     ok.
 
 %% @private

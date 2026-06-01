@@ -362,6 +362,7 @@ init([]) ->
     ets:new(peers, [named_table, {keypos, #peer.pid}, public]),
     ets:new(tracking_map, [named_table, {keypos, #tracking_map.id}, public]),
     ets:new(histogram, [named_table, {keypos, 1}, public, bag]),
+    ets:new(torrent_crash_log, [public, named_table, bag]),
     {ok, #state{ monitoring = dict:new() }}.
 
 %% @private
@@ -388,7 +389,7 @@ handle_cast(Msg, S) ->
     {stop, Msg, S}.
 
 %% @private
-handle_info({'DOWN', Ref, _, _, _}, S) ->
+handle_info({'DOWN', Ref, _, Pid, Reason}, S) ->
     {ok, {X, Type}} = dict:find(Ref, S#state.monitoring),
     case Type of
         peer ->
@@ -401,6 +402,8 @@ handle_info({'DOWN', Ref, _, _, _}, S) ->
                end]),
             true = ets:delete(peers, X);
         {torrent, Id} ->
+            ets:insert(torrent_crash_log, {supervisor_down, Id, Pid, Reason,
+                                           erlang:system_time(millisecond)}),
             true = ets:delete(tracking_map, Id)
     end,
     {noreply, S#state { monitoring = dict:erase(Ref, S#state.monitoring) }}.

@@ -166,7 +166,10 @@ handle_info(_Info, State) ->
 terminate(Reason, S) when Reason =:= shutdown; Reason =:= normal ->
     _NS = contact_tracker(stopped, S),
     ok;
-terminate(Reason, _S) ->
+terminate(Reason, S) ->
+    catch ets:insert(torrent_crash_log,
+        {tracker_comm, S#state.torrent_id, Reason,
+         erlang:system_time(millisecond)}),
     lager:warning("Terminating due to ~p", [Reason]),
     ok.
 
