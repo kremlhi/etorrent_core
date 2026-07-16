@@ -327,14 +327,6 @@ contact_tracker_udp(Url, TrackerID, TrackerIP, TrackerPort, Event,
             {Interval, MinInterval} =
                 handle_udp_response(Url, Id, Peers, Status),
             {ok, handle_timeout(Interval, MinInterval, S)};
-<<<<<<< HEAD
-        timeout ->
-            lager:warning("UDP tracker ~p:~p timed out", [TrackerIP, TrackerPort]),
-            {ok, S};
-        {error, Reason} ->
-            lager:warning("UDP tracker ~p:~p error: ~p", [TrackerIP, TrackerPort, Reason]),
-            {ok, S}
-=======
         {error, Reason} ->
             etorrent_tracker:statechange(TrackerID, [{message, error, Reason}]),
             error;
@@ -342,7 +334,6 @@ contact_tracker_udp(Url, TrackerID, TrackerIP, TrackerPort, Event,
             etorrent_tracker:statechange(TrackerID,
                                          [{message, error, <<"Timeout.">>}]),
             error
->>>>>>> fix/28-contact-tracker-udp-error-handling
     end.
 
 %% @todo: consider not passing around the state here!
