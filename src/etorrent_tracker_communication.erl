@@ -51,13 +51,13 @@
 -export([first_tracker_id/1]).
 -endif.
 
--type tier() :: [{integer(), binary()}].
+-type tier() :: etorrent_types:tier().
 -record(state, {queued_message = none :: none | started,
                 %% The hard timer is the time we *must* wait on the tracker.
                 %% soft timer may be overridden if we want to change state.
                 soft_timer     :: reference() | none,
                 hard_timer     :: reference() | none,
-                url = []     :: [tier()],
+                url = [[]]   :: [tier()],
                 info_hash      :: binary(),
                 peer_id        :: binary(),
                 control_pid    :: pid(),
@@ -179,12 +179,15 @@ contact_tracker(S) ->
     contact_tracker(none, S).
 
 contact_tracker(Event, #state { url = Tiers } = S) ->
-    contact_tracker(Tiers, Event, S).
+    case contact_tracker(Tiers, Event, S) of
+        {none, NS} -> NS;
+        {ok, NS}   -> NS
+    end.
 
 contact_tracker(Tiers, Event, S) ->
     case contact_tracker(Tiers, Event, S, []) of
-        none     -> handle_timeout(S);
-        {ok, NS} -> NS
+        none     -> {none, handle_timeout(S)};
+        {ok, NS} -> {ok, NS}
     end.
 
 -spec contact_tracker(Tiers, Event, State, Acc) -> {ok, State} | none when
