@@ -48,7 +48,7 @@
 -export([ifaddrs/0]).
 
 -ifdef(TEST).
--export([first_tracker_id/1, identify_url_type/1]).
+-export([first_tracker_id/1, identify_url_type/1, contact_tracker_udp/6, test_state/4]).
 -endif.
 
 -type tier() :: [{integer(), binary()}].
@@ -287,7 +287,7 @@ format_ipv6_address(Tuple) ->
              "~4.16.0B:~4.16.0B:~4.16.0B:~4.16.0B",
     iolist_to_binary(io_lib:format(Format, tuple_to_list(Tuple))).
 
-contact_tracker_udp(Url, _TrackerID, TrackerIP, TrackerPort, Event,
+contact_tracker_udp(Url, TrackerID, TrackerIP, TrackerPort, Event,
                     #state { torrent_id = Id,
                              info_hash = InfoHash,
                              peer_id = PeerId,
@@ -324,12 +324,22 @@ contact_tracker_udp(Url, _TrackerID, TrackerIP, TrackerPort, Event,
             {Interval, MinInterval} =
                 handle_udp_response(Url, Id, Peers, Status),
             {ok, handle_timeout(Interval, MinInterval, S)};
+<<<<<<< HEAD
         timeout ->
             lager:warning("UDP tracker ~p:~p timed out", [TrackerIP, TrackerPort]),
             {ok, S};
         {error, Reason} ->
             lager:warning("UDP tracker ~p:~p error: ~p", [TrackerIP, TrackerPort, Reason]),
             {ok, S}
+=======
+        {error, Reason} ->
+            etorrent_tracker:statechange(TrackerID, [{message, error, Reason}]),
+            error;
+        timeout ->
+            etorrent_tracker:statechange(TrackerID,
+                                         [{message, error, <<"Timeout.">>}]),
+            error
+>>>>>>> fix/28-contact-tracker-udp-error-handling
     end.
 
 %% @todo: consider not passing around the state here!
@@ -504,5 +514,11 @@ first_tracker_id_test_() ->
                    first_tracker_id([[{10,"http://bt3.rutracker.org/ann?uk=xxxxxxxxxx"}],
                                      [{11,"http://retracker.local/announce"}]]))
     ].
+
+test_state(TorrentId, InfoHash, PeerId, Timeout) ->
+    #state{torrent_id = TorrentId,
+           info_hash  = InfoHash,
+           peer_id    = PeerId,
+           udp_tracker_connection_timeout = Timeout}.
 
 -endif.
