@@ -234,19 +234,18 @@ contact_tracker_tier([{TrackerID, Url} = Cur | Next], Event, S, Acc) ->
     end.
 
 identify_url_type(Url) ->
-	case etorrent_http_uri:parse(Url) of
-	  {S1, _UserInfo, Host, Port, _Path, _Query} ->
-	  	case S1 of
-	 	  http  -> http;
-	 	  https -> http;
-		  udp ->
-			{ok, IP} = inet:getaddr(Host, inet),
- 			{udp, IP, Port}
-		end;
-	  {error, Reason} ->
-		lager:error("Unknown URL type for url ~s, error: ~p", [Url, Reason]),
-		exit(identify_url_type)
-	end.
+    case etorrent_http_uri:parse(Url) of
+        {S1, _UserInfo, Host, Port, _Path, _Query} ->
+            case S1 of
+                http  -> http;
+                https -> http;
+                udp   -> {udp, Host, Port}
+            end;
+        {error, Reason} ->
+            lager:error("Unknown URL type for url ~s, error: ~p",
+                        [Url, Reason]),
+            exit(identify_url_type)
+    end.
 
 %% @doc Disconnect from tracker designated by its url.
 %% <p>It is called to comply with BEP 27 Private Torrents,
