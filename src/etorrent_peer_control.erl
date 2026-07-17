@@ -14,6 +14,9 @@
 
 -include("etorrent_rate.hrl").
 
+%% test helpers; internals reachable via export_all in the test profile
+-export([test_state/2]).
+
 %% API
 -export([start_link/8,
         choke/1,
@@ -493,59 +496,63 @@ format_status(_Opt, [_Pdict, S]) ->
 -spec handle_message(_,_) -> {'ok',_} | {'stop', _, _}.
 handle_message(keep_alive, S) ->
     {ok, S};
+%% A peer may resend its current choke or interest state; the wire
+%% protocol does not forbid redundant state messages. Treat them as
+%% no-ops instead of crashing on the strict state transitions in
+%% etorrent_peerstate (issue #8).
 handle_message(choke, State) ->
     #state{
         torrent_id=TorrentID,
         local=Local,
         config=Config,
         download=Download} = State,
-    ok = etorrent_peer_states:set_choke(TorrentID, self()),
-    NewState = case etorrent_peerconf:fast(Config) of
+    case etorrent_peerstate:choked(Local) of
         true ->
-            %% If the Fast Extension is enabled a CHOKE message does
-            %% not imply that all outstanding requests are dropped.
-            NewLocal = etorrent_peerstate:choked(true, Local),
-            State#state{local=NewLocal};
+            {ok, State};
         false ->
-            %% A CHOKE message implies that all outstanding requests has been dropped.
-            Requests = etorrent_peerstate:requests(Local),
-            Pieces = etorrent_rqueue:pieces(Requests),
-            Chunks = etorrent_rqueue:to_list(Requests),
-            Peers  = etorrent_peer_control:lookup_peers(TorrentID),
-            ok = etorrent_piecestate:unassigned(Pieces, Peers),
-            ok = etorrent_download:chunks_dropped(Chunks, Download),
-            NewReqs = etorrent_rqueue:flush(Requests),
-            TmpLocal = etorrent_peerstate:choked(true, Local),
-            NewLocal = etorrent_peerstate:requests(NewReqs, TmpLocal),
-            State#state{local=NewLocal}
-    end,
-    {ok, NewState};
+            NewLocal = remote_choked(TorrentID, Local, Config, Download),
+            {ok, State#state{local=NewLocal}}
+    end;
 
 handle_message(unchoke, State) ->
     #state{torrent_id=TorrentID} = State,
     #state{send_pid=SendPid, download=Download, local=Local, remote=Remote} = State,
-    ok = etorrent_peer_states:set_unchoke(TorrentID, self()),
-    TmpLocal = etorrent_peerstate:choked(false, Local),
-    NewLocal = poll_local_rqueue(Download, SendPid, Remote, TmpLocal),
-    NewState = State#state{local=NewLocal},
-    {ok, NewState};
+    case etorrent_peerstate:choked(Local) of
+        false ->
+            {ok, State};
+        true ->
+            ok = etorrent_peer_states:set_unchoke(TorrentID, self()),
+            TmpLocal = etorrent_peerstate:choked(false, Local),
+            NewLocal = poll_local_rqueue(Download, SendPid, Remote, TmpLocal),
+            NewState = State#state{local=NewLocal},
+            {ok, NewState}
+    end;
 
 handle_message(interested, State) ->
     #state{torrent_id=TorrentID, remote=Remote} = State,
-    ok = etorrent_peer_states:set_interested(TorrentID, self()),
-    ok = etorrent_peer_control:check_choke(self()),
-    NewRemote = etorrent_peerstate:interested(true, Remote),
-    NewState = State#state{remote=NewRemote},
-    {ok, NewState};
+    case etorrent_peerstate:interested(Remote) of
+        true ->
+            {ok, State};
+        false ->
+            ok = etorrent_peer_states:set_interested(TorrentID, self()),
+            ok = etorrent_peer_control:check_choke(self()),
+            NewRemote = etorrent_peerstate:interested(true, Remote),
+            NewState = State#state{remote=NewRemote},
+            {ok, NewState}
+    end;
 
 handle_message(not_interested, State) ->
     #state{torrent_id=TorrentID, remote=Remote} = State,
-    ok = etorrent_peer_states:set_not_interested(TorrentID, self()),
-    ok = etorrent_peer_control:check_choke(self()),
-    %% FIXME: badarg
-    NewRemote = etorrent_peerstate:interested(false, Remote),
-    NewState = State#state{remote=NewRemote},
-    {ok, NewState};
+    case etorrent_peerstate:interested(Remote) of
+        false ->
+            {ok, State};
+        true ->
+            ok = etorrent_peer_states:set_not_interested(TorrentID, self()),
+            ok = etorrent_peer_control:check_choke(self()),
+            NewRemote = etorrent_peerstate:interested(false, Remote),
+            NewState = State#state{remote=NewRemote},
+            {ok, NewState}
+    end;
 
 %% Handle incoming chunk request from wire.
 handle_message({request, Index, Offset, Length}, State) ->
@@ -751,6 +758,30 @@ handle_message(Unknown, State) ->
     {stop, normal, State}.
 
 
+%% The remote peer choked us. Record it and, unless the Fast Extension
+%% is enabled, drop all outstanding requests. Returns the new local
+%% peerstate.
+remote_choked(TorrentID, Local, Config, Download) ->
+    ok = etorrent_peer_states:set_choke(TorrentID, self()),
+    case etorrent_peerconf:fast(Config) of
+        true ->
+            %% If the Fast Extension is enabled a CHOKE message does
+            %% not imply that all outstanding requests are dropped.
+            etorrent_peerstate:choked(true, Local);
+        false ->
+            %% A CHOKE message implies that all outstanding requests has been dropped.
+            Requests = etorrent_peerstate:requests(Local),
+            Pieces = etorrent_rqueue:pieces(Requests),
+            Chunks = etorrent_rqueue:to_list(Requests),
+            Peers  = etorrent_peer_control:lookup_peers(TorrentID),
+            ok = etorrent_piecestate:unassigned(Pieces, Peers),
+            ok = etorrent_download:chunks_dropped(Chunks, Download),
+            NewReqs = etorrent_rqueue:flush(Requests),
+            TmpLocal = etorrent_peerstate:choked(true, Local),
+            etorrent_peerstate:requests(NewReqs, TmpLocal)
+    end.
+
+
 handle_ext_message({metadata_request, PieceNum}, State) ->
     #state{torrent_id=TorrentID, extensions=Exts, send_pid=SendPid,
            metadata_size=MetadataSize} = State,
@@ -943,4 +974,14 @@ check_remote_seeder(Remote, Local) ->
         _ ->
             exit(seeder)
     end.
+
+%% Build a minimal #state{} for etorrent_peer_control_tests. The record
+%% is internal to this module, so the constructor lives here.
+test_state(Local, Remote) ->
+    #state{torrent_id=0,
+           info_hash= <<0:160>>,
+           download=none,
+           local=Local,
+           remote=Remote,
+           config=none}.
 
