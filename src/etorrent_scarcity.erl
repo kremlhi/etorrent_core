@@ -241,14 +241,32 @@ handle_call({add_piece, Pid, PieceIndex, Pieceset}, _, State) ->
         peer_monitors=Monitors,
         num_peers=Numpeers,
         watchers=Watchers} = State,
-    ets:update_counter(Numpeers, PieceIndex, 1),
-    NewNumpeers = Numpeers,
-    NewMonitors = etorrent_monitorset:update(Pid, Pieceset, Monitors),
-    NewWatchers = send_updates(PieceIndex, Watchers, NewNumpeers, Time),
-    NewState = State#state{
-        peer_monitors=NewMonitors,
-        num_peers=NewNumpeers,
-        watchers=NewWatchers},
+    %% A peer may believe it is registered while we have no entry for it:
+    %% if this server crashes it is restarted by the supervisor with an
+    %% empty peer_monitors set, but the peer processes under the sibling
+    %% peer pool supervisor survive and keep announcing pieces. Crashing
+    %% on the missing entry (jlouis/etorrent#107) brought the fresh
+    %% server down again on every such announcement until the restart
+    %% intensity of the supervisor was exceeded and the whole torrent
+    %% was taken down. Every announcement carries the peer's complete
+    %% piece set, so we can recover the lost registration instead.
+    NewState = case etorrent_monitorset:is_member(Pid, Monitors) of
+        true ->
+            ets:update_counter(Numpeers, PieceIndex, 1),
+            NewMonitors = etorrent_monitorset:update(Pid, Pieceset, Monitors),
+            NewWatchers = send_updates(PieceIndex, Watchers, Numpeers, Time),
+            State#state{
+                peer_monitors=NewMonitors,
+                watchers=NewWatchers};
+        false ->
+            NewNumpeers = increment(Pieceset, Numpeers),
+            NewMonitors = etorrent_monitorset:insert(Pid, Pieceset, Monitors),
+            NewWatchers = send_updates(Pieceset, Watchers, NewNumpeers, Time),
+            State#state{
+                peer_monitors=NewMonitors,
+                num_peers=NewNumpeers,
+                watchers=NewWatchers}
+    end,
     {reply, ok, NewState};
 
 handle_call({get_order, Pieceset}, _, State) ->

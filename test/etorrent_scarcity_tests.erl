@@ -26,7 +26,9 @@ scarcity_server_test_() ->
          ?_test(aggregate_update_case(test_data(12))),
          ?_test(noaggregate_update_case(test_data(13))),
          ?_test(peer_exit_update_case(test_data(10))),
-         ?_test(local_unwatch_case(test_data(11)))]}.
+         ?_test(local_unwatch_case(test_data(11))),
+         ?_test(add_piece_unregistered_case(test_data(14))),
+         ?_test(unregistered_decrement_case(test_data(15)))]}.
 
 test_data(N) ->
     {ok, Time} = ?timer:start_link(queue),
@@ -167,3 +169,30 @@ local_unwatch_case({N, Time, Pid}) ->
         after 0 ->
             ?assert(true)
     end.
+
+%% A restarted scarcity server has an empty peer_monitors set while the
+%% surviving peers keep announcing pieces (jlouis/etorrent#107). An
+%% announcement from an unregistered peer must register it instead of
+%% crashing the server.
+add_piece_unregistered_case({N, Time, Pid}) ->
+    ?assertEqual(ok, ?scarcity:add_piece(N, 2, pieces([0,2]))),
+    {ok, Order} = ?scarcity:get_order(N, pieces([0,1,2,3,4,5,6,7])),
+    ?assertEqual([1,3,4,5,6,7,0,2], Order).
+
+%% The recovered registration must behave like a normal one: the full
+%% piece set is counted once and decremented once when the peer exits.
+unregistered_decrement_case({N, Time, _}) ->
+    Main = self(),
+    Pid = spawn_link(fun() ->
+        ok = ?scarcity:add_piece(N, 0, pieces([0])),
+        Main ! done,
+        receive die -> ok end
+    end),
+    receive done -> ok end,
+    {ok, O1} = ?scarcity:get_order(N, pieces([0,1])),
+    ?assertEqual([1,0], O1),
+    Ref = monitor(process, Pid),
+    Pid ! die,
+    receive {'DOWN', Ref, _, _, _} -> ok end,
+    {ok, O2} = ?scarcity:get_order(N, pieces([0,1])),
+    ?assertEqual([0,1], O2).
