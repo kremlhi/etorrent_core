@@ -860,8 +860,11 @@ make_mask(From, Size, PLen, TLen) ->
     Mask :: bitstring().
 
 %% @private
+%% Note: PLen may exceed TLen. BEP 3 allows a piece length larger than the
+%% total size; the torrent then consists of a single short piece. This is
+%% common for torrents of files smaller than the piece size.
 make_mask(From, Size, PLen, TLen, IsGreedy)
-    when PLen =< TLen, Size =< TLen, From >= 0, PLen > 0 ->
+    when Size =< TLen, From >= 0, PLen > 0 ->
     %% __Bytes__: 1 <= From <= To <= TLen
     %%
     %% Calculate how many __pieces__ before, in and after the file.
@@ -979,6 +982,16 @@ make_mask_test_() ->
     ,?_assertEqual(<<2#0011:4>>       , F(8, 2,  3, 11))
     ,?_assertEqual(<<-1:30>>, F(0, 31457279,  1048576, 31457280))
     ,?_assertEqual(<<-1:30>>, F(0, 31457280,  1048576, 31457280))
+    %% Piece length exceeding total length is valid per BEP 3: the
+    %% torrent is a single short piece. Regression tests for issue #21
+    %% (crash on torrents of files smaller than the piece size).
+    ,?_assertEqual(<<1:1>>, F(0, 323, 1048576, 323))
+    %% |012|
+    %% |xxx| (PLen 10)
+    ,?_assertEqual(<<1:1>>, F(0, 3, 10, 3))
+    %% |012|
+    %% |-xx| (PLen 10, file starting mid-piece)
+    ,?_assertEqual(<<1:1>>, F(1, 2, 10, 3))
     ].
 
 make_ungreedy_mask_test_() ->
@@ -991,6 +1004,12 @@ make_ungreedy_mask_test_() ->
     %% |0123|4567|89A-|
     %% |--xx|xxxx|xx--|
     ,?_assertEqual(<<2#010:3>>        , F(2, 8,  4, 11))
+    %% Piece length exceeding total length (issue #21): the whole file
+    %% fills the single short piece, so ungreedy still includes it.
+    ,?_assertEqual(<<1:1>>, F(0, 3, 10, 3))
+    %% A file covering only part of the single piece is not fully
+    %% contained, so ungreedy excludes it.
+    ,?_assertEqual(<<0:1>>, F(1, 2, 10, 3))
     ].
 
 add_directories_test_() ->
@@ -1490,7 +1509,7 @@ collapse_ranges([]) ->
 
 
 byte_ranges_to_mask([{From, Size}|Ranges], FromPiece, PLen, TLen, IsGreedy, Bin)
-    when PLen =< TLen, Size =< TLen, From >= 0, PLen > 0, FromPiece >= 0 ->
+    when Size =< TLen, From >= 0, PLen > 0, FromPiece >= 0 ->
     %% indexing from 0
     PFrom  = byte_to_piece_index(From, PLen, IsGreedy),
     PBefore = PFrom - FromPiece,
@@ -1514,6 +1533,9 @@ byte_ranges_to_mask_test_() ->
     %% Set:    |---x|xxxx|xxx-|
     [?_assertEqual(<<2#010:3>>, byte_ranges_to_mask([{3,8}], 0, 4, 12,
                                                     false, <<>>)),
+    %% Piece length exceeding total length (issue #21).
+     ?_assertEqual(<<1:1>>, byte_ranges_to_mask([{0,323}], 0, 1048576, 323,
+                                                false, <<>>)),
     %% Bytes:  |0123|4567|89AB|
     %% Pieces: |0   |1   |2   |
     %% Set:    |---x|xxxx|xxxx|
