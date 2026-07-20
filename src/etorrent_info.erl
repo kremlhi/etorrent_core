@@ -1291,17 +1291,17 @@ mask_to_filelist_int(Mask, Arr, true) ->
             [0];
         #file_info{children=SubFileIds} ->
             mask_to_filelist_rec(SubFileIds, Mask, Arr, #file_info.pieces)
+    end;
+mask_to_filelist_int(Mask, Arr, false) ->
+    Root = array:get(?ROOT_FILE_ID, Arr),
+    case Root of
+        %% Everything is unwanted.
+        #file_info{distinct_pieces=Mask} ->
+            [0];
+        #file_info{children=SubFileIds} ->
+            mask_to_filelist_rec(SubFileIds, Mask, Arr,
+                                 #file_info.distinct_pieces)
     end.
-%% mask_to_filelist_int(Mask, Arr, false) ->
-%%     Root = array:get(?ROOT_FILE_ID, Arr),
-%%     case Root of
-%%         %% Everything is unwanted.
-%%         #file_info{distinct_pieces=Mask} ->
-%%             [0];
-%%         #file_info{children=SubFileIds} ->
-%%             mask_to_filelist_rec(SubFileIds, Mask, Arr,
-%%                                  #file_info.distinct_pieces)
-%%     end.
 
 %% Matching all files starting from Root recursively.
 mask_to_filelist_rec([FileId|FileIds], Mask, Arr, PieceField) ->
