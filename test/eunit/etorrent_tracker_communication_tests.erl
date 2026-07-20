@@ -61,3 +61,10 @@ contact_tracker_udp_test_() ->
                              [42, [{message, error, <<"Timeout.">>}]]))
      end)
     ]}.
+
+first_tracker_id_test_() ->
+    [?_assertEqual(10,
+                   etorrent_tracker_communication:first_tracker_id(
+                     [[{10,"http://bt3.rutracker.org/ann?uk=xxxxxxxxxx"}],
+                      [{11,"http://retracker.local/announce"}]]))
+    ].

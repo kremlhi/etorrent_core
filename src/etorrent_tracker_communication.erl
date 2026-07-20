@@ -33,10 +33,6 @@
 
 -behaviour(gen_server).
 
--ifdef(TEST).
--include_lib("proper/include/proper.hrl").
--include_lib("eunit/include/eunit.hrl").
--endif.
 
 %% API
 -export([start_link/4, completed/1, update_tracker/1]).
@@ -47,9 +43,9 @@
 
 -export([ifaddrs/0]).
 
--ifdef(TEST).
--export([first_tracker_id/1, identify_url_type/1, contact_tracker_udp/6, test_state/4]).
--endif.
+%% test helpers; internals reachable via export_all in the test profile
+-export([test_state/4]).
+
 
 -type tier() :: etorrent_types:tier().
 -record(state, {queued_message = none :: none | started,
@@ -501,18 +497,10 @@ first_tracker_id([]) -> undefined.
 %%% Test
 %%% ----------------------------------------------------------------------
 
--ifdef(TEST).
-
-first_tracker_id_test_() ->
-    [?_assertEqual(10,
-                   first_tracker_id([[{10,"http://bt3.rutracker.org/ann?uk=xxxxxxxxxx"}],
-                                     [{11,"http://retracker.local/announce"}]]))
-    ].
-
+%% Build a minimal #state{} for etorrent_tracker_communication_tests.
+%% The record is internal to this module, so the constructor lives here.
 test_state(TorrentId, InfoHash, PeerId, Timeout) ->
     #state{torrent_id = TorrentId,
            info_hash  = InfoHash,
            peer_id    = PeerId,
            udp_tracker_connection_timeout = Timeout}.
-
--endif.

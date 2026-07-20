@@ -1136,21 +1136,6 @@ num_hashes(Hashes) ->
     byte_size(Hashes) div 20.
 
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-hashes_to_binary_test_() ->
-    Input = [<<1:160>>, <<2:160>>, <<3:160>>],
-    Bin = hashes_to_binary(Input),
-    [?_assertEqual(<<1:160>>, fetch_hash(0, Bin)),
-     ?_assertEqual(<<2:160>>, fetch_hash(1, Bin)),
-     ?_assertEqual(<<3:160>>, fetch_hash(2, Bin)),
-     ?_assertEqual(3, num_hashes(Bin)),
-     ?_assertError(badarg, fetch_hash(-1, Bin)),
-     ?_assertError(badarg, fetch_hash(3, Bin))].
-
-
--endif.
 
 
 

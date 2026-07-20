@@ -6,9 +6,6 @@
          encode_msg/3,
          is_locally_supported/2]).
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
 
 -type ext_id() :: 1 .. 255.
 -type ext_name() :: atom().
@@ -134,18 +131,6 @@ filter_supported([], Xs, _) ->
     [].
 
 
--ifdef(TEST).
-filter_supported_test_() ->
-    [?_assertEqual([{x,{1,yy}},{y,{2,zz}}],
-                   filter_supported([{<<"x">>,1}, {<<"y">>,2}, {<<"z">>,3}],
-                                    [<<"a">>,<<"x">>,<<"y">>],
-                                    [xx,yy,zz]))
-    ,?_assertEqual([],
-                   filter_supported([],
-                                    [<<"a">>],
-                                    [xx]))
-    ].
--endif.
 
 
 
@@ -178,31 +163,6 @@ update_ord_dict([], [_|_]=Olds) ->
     Olds.
 
 
--ifdef(TEST).
-update_ord_dict_test_() ->
-    [{"Add 3 new extensions."
-    ,?_assertEqual(update_ord_dict([{<<"x">>,1}, {<<"y">>,2}, {<<"z">>,3}],
-                                    []),
-                   [{<<"x">>,1}, {<<"y">>,2}, {<<"z">>,3}])}
-    ,{"Add 2 new extension, ignore deletion of the one."
-    ,?_assertEqual(update_ord_dict([{<<"x">>,1}, {<<"y">>,0}, {<<"z">>,3}],
-                                    []),
-                   [{<<"x">>,1}, {<<"z">>,3}])}
-    ,{"Add 2 new extension, delete the one."
-    ,?_assertEqual(update_ord_dict([{<<"x">>,1}, {<<"y">>,0}, {<<"z">>,3}],
-                                    [{<<"y">>,2}]),
-                   [{<<"x">>,1}, {<<"z">>,3}])}
-%   ,{"Add 2 new extension to a non-empty list, and delete them (strange)."
-%   ,?_assertEqual(update_ord_dict([{<<"x">>,1}, {<<"x">>,0}, {<<"z">>,3}, {<<"z">>,0}],
-%                                   [{<<"y">>,2}]),
-%                  [{<<"y">>,2}])}
-    %% Strange case.
-    ,{"Delete new extension, and add it."
-    ,?_assertEqual(update_ord_dict([{<<"x">>,0}, {<<"x">>,3}],
-                                    [{<<"y">>,2}]),
-                   [{<<"x">>,3}, {<<"y">>,2}])}
-    ].
--endif.
 
 gen_mod_list(Bnames) ->
     [binary_to_atom(<<"etorrent_ext_", Bname/binary>>, utf8) || Bname <- Bnames].

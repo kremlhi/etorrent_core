@@ -9,6 +9,9 @@
 -export([start_link/0,
          set_enabled/1]).
 
+%% test helpers; the torrent record is internal to this module
+-export([test_torrent/1, test_torrent_id/1]).
+
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
 %% ------------------------------------------------------------------
@@ -146,6 +149,15 @@ to_record(X) ->
 sort_records(List) ->
     lists:keysort(#torrent.id, List).
 
+%% Build and inspect minimal #torrent{} records for
+%% etorrent_console_tests. The record is internal to this module, so
+%% the helpers live here.
+test_torrent(Id) ->
+    #torrent{id = Id}.
+
+test_torrent_id(#torrent{id = Id}) ->
+    Id.
+
 
 calc_speed_records(Olds, News, Tick) ->
     FU = fun(#torrent{uploaded=X, speed_out=0.0}, 
@@ -245,19 +257,4 @@ pretty_speed(BPS) ->
 
 
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-
-sort_records_test_() ->
-    Unsorted = [#torrent{id=1}, #torrent{id=3}, #torrent{id=2}],
-    Sorted = sort_records(Unsorted),
-    [R1, R2, R3] = Sorted,
-
-    [?_assertEqual(R1#torrent.id, 1)
-    ,?_assertEqual(R2#torrent.id, 2)
-    ,?_assertEqual(R3#torrent.id, 3)
-    ].
-
--endif.
 
