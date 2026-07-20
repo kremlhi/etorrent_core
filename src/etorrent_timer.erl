@@ -98,7 +98,7 @@ start_timer(Server, Time, Dest, Msg) ->
 
 -spec cancel(timeserver(), reference()) -> pos_integer() | false.
 cancel(Server, Timer) ->
-    cancel(Server, Timer).
+    cancel(Server, Timer, []).
 
 -spec cancel(timeserver(), reference(), [flush]) -> pos_integer() | false.
 cancel(Server, Timer, Opts) ->
